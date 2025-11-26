@@ -22,5 +22,7 @@
 !network/
 !network/*.nix
 
-# Add deployment scripts
+# Add deployment files
 !deploy-nix.sh
+!Containerfile
+!build-deployer.sh

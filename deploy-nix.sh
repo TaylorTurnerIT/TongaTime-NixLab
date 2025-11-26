@@ -3,6 +3,7 @@
 # --- Configuration ---
 TARGET_HOST="homelab" 
 FLAKE=".#homelab"
+DEPLOYER_IMAGE="homelab-deployer:latest"
 # ---------------------
 
 set -e
@@ -13,8 +14,17 @@ usage() {
     echo "Options:"
     echo "  (no option)   Update the server (nixos-rebuild switch)"
     echo "  --install     Wipe and Re-install (nixos-anywhere)"
+    echo "  --rebuild     Rebuild the deployment container"
     exit 1
 }
+
+# Check if we need to rebuild the image
+if [[ "$1" == "--rebuild" ]]; then
+    echo "🔨 Rebuilding deployment container..."
+    podman build -t "$DEPLOYER_IMAGE" -f Containerfile .
+    echo "✅ Container rebuilt!"
+    exit 0
+fi
 
 # Check arguments
 MODE="update"
@@ -31,43 +41,41 @@ elif [[ -n "$1" ]]; then
     usage
 fi
 
-echo "🚀 Starting Deployment Container..."
+# Check if image exists
+if ! podman image exists "$DEPLOYER_IMAGE"; then
+    echo "❌ Deployer image not found. Building it now..."
+    podman build -t "$DEPLOYER_IMAGE" -f Containerfile .
+fi
 
-# CHANGE: We mount keys to /mnt/ssh_keys (RO) instead of directly to /root/.ssh
+echo "🚀 Starting Deployment (using $DEPLOYER_IMAGE)..."
+
 podman run --rm -it \
   --security-opt label=disable \
   -v "$(pwd):/work:Z" \
   -v "$HOME/.ssh:/mnt/ssh_keys:ro" \
   -w /work \
   --net=host \
-  nixos/nix \
+  "$DEPLOYER_IMAGE" \
   bash -c "
     # 1. Setup Writable SSH Environment
-    # We copy keys from the read-only mount to the writable container home
-    mkdir -p /root/.ssh
+    # Copy keys from read-only mount to writable container location
     cp -r /mnt/ssh_keys/* /root/.ssh/ 2>/dev/null || true
     chmod 700 /root/.ssh
-    chmod 600 /root/.ssh/*
-    
-    # 2. Configure Nix
-    mkdir -p ~/.config/nix
-    echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+    chmod 600 /root/.ssh/* 2>/dev/null || true
 
-    # 3. Configure SSH to ignore known_hosts collisions
-    export NIX_SSHOPTS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-
-    # 4. Execute Command (With Retry Loop)
+    # 2. Execute Command (With Retry Loop)
     while true; do
         if [ \"$MODE\" == \"install\" ]; then
             echo '🔥 Nuking and Installing NixOS...'
-            # Note: We explicitly point to the copied config file
-            if nix run github:nix-community/nixos-anywhere -- --flake $FLAKE $TARGET_HOST; then
+            # Notice: No more 'nix run' - the tool is already installed!
+            if nixos-anywhere --flake $FLAKE $TARGET_HOST; then
                 echo '✅ Installation Complete!'
                 break
             fi
         else
             echo '🔄 Updating Configuration...'
-            if nix run nixpkgs#nixos-rebuild -- switch --flake $FLAKE --target-host $TARGET_HOST --use-remote-sudo; then
+            # Notice: No more 'nix run' - the tool is already installed!
+            if nixos-rebuild switch --flake $FLAKE --target-host $TARGET_HOST --use-remote-sudo; then
                 echo '✅ Update Complete!'
                 break
             fi
