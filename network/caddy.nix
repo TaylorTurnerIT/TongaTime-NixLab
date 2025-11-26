@@ -87,6 +87,19 @@ in
         '';
       };
 
+      /*
+      Service:  ProxMenuX (Proxmox Monitor)
+                ProxMenuX is a monitoring dashboard for Proxmox environments.
+                
+                proxmenux.tongatime.us -> https://192.168.1.36:8008
+      */
+      "proxmenux.${domain}" = {
+        useACMEHost = domain;
+        extraConfig = ''
+        reverse_proxy http://192.168.1.36:8008
+        '';
+      };
+
       /* DEFAULT
         Service:  Homepage (Dashboard)
                   Homepage dashboard for quick access to services and status.
