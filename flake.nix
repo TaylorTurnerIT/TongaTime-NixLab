@@ -8,12 +8,23 @@
   };
 
   outputs = { self, nixpkgs, disko, ... }: {
+    # Homelab Server Configuration
     nixosConfigurations.homelab = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         disko.nixosModules.disko
         ./disko-config.nix
         ./configuration.nix
+      ];
+    };
+
+    # Oracle VPS Gateway Configuration
+    nixosConfigurations.vps-gateway = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        disko.nixosModules.disko
+        ./vps/disko.nix
+        ./vps/configuration.nix
       ];
     };
   };

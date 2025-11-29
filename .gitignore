@@ -30,3 +30,4 @@
 # Allow VPS proxy deployment script
 !vps_proxy/
 !vps_proxy/deploy_vps.sh
+!vps_proxy/*.nix
