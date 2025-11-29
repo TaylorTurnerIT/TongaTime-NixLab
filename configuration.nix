@@ -20,9 +20,13 @@
   boot.kernelModules = [ "kvm-intel" ]; 
   
   # --- SERVER HARDENING ---
-  services.openssh = {
+   services.openssh = {
     enable = true;
-    settings.PermitRootLogin = "yes"; # Temporarily yes for install, change to "no" later
+    settings = {
+      PermitRootLogin = "prohibit-password"; # Only keys allowed
+      PasswordAuthentication = false;        # Disable passwords completely
+      KbdInteractiveAuthentication = false;  # Disable keyboard-interactive auth
+    };
   };
 
   # users.users.nixos.openssh.authorizedKeys.keys = [
