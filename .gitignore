@@ -22,7 +22,10 @@
 !network/
 !network/*.nix
 
-# Add deployment files
+# Allow deployment files
 !deploy-nix.sh
 !Containerfile
 !build-deployer.sh
+
+# Allow VPS proxy deployment script
+!vps_proxy
