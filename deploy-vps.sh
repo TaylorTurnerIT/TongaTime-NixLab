@@ -2,7 +2,6 @@
 
 TARGET_HOST="129.153.13.212"
 TARGET_USER="ubuntu"
-# FIX: Point to the correct Home Manager output
 FLAKE=".#homeConfigurations.ubuntu"
 SSH_KEY_NAME="homelab"
 DEPLOYER_IMAGE="homelab-deployer:latest"
@@ -43,20 +42,45 @@ podman run --rm -it \
 
     SSH_CMD=\"ssh -i /root/.ssh/$SSH_KEY_NAME $TARGET_USER@$TARGET_HOST\"
 
-    # --- 1. Bootstrap Nix & Lingering ---
+    # --- 1. Bootstrap Nix ---
     echo '🔍 Checking remote setup...'
     if ! \$SSH_CMD \"command -v nix-env &> /dev/null\"; then
         echo '📦 Installing Nix...'
         \$SSH_CMD \"curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm\"
     fi
 
-    # CRITICAL FIX: Use sudo for loginctl
-    echo '⏳ Enabling Systemd Lingering...'
-    \$SSH_CMD \"sudo loginctl enable-linger $TARGET_USER\"
+    # --- 2. System Configuration (The Fixes) ---
+    echo '🛡️ Configuring System & Security...'
+    
+    \$SSH_CMD \"
+        set -e
+        # 1. Enable Lingering (so Caddy stays running)
+        sudo loginctl enable-linger $TARGET_USER
 
-    # --- 2. Build Configuration ---
+        # 2. Fix 'Lacks Signature' Error (Trust the ubuntu user)
+        if ! grep -q 'trusted-users =.*$TARGET_USER' /etc/nix/nix.conf; then
+            echo '🔓 Adding $TARGET_USER to trusted-users...'
+            echo 'trusted-users = root $TARGET_USER' | sudo tee -a /etc/nix/nix.conf
+            sudo systemctl restart nix-daemon
+        fi
+
+        # 3. Create 3GB Swap (The Requested Feature)
+        if [ ! -f /swapfile ]; then
+            echo '💾 Creating 3GB Swap File...'
+            sudo fallocate -l 3G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+            # Make it persistent
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            echo '✅ Swap Active'
+        else
+            echo '✅ Swap already exists'
+        fi
+    \"
+
+    # --- 3. Build Configuration ---
     echo '🔨 Building Home Manager configuration...'
-    # Build the specific activation package
     DRV=\$(nix build --no-link --print-out-paths \"\${FLAKE}.activationPackage\" --extra-experimental-features 'nix-command flakes')
     
     if [ -z \"\$DRV\" ]; then
@@ -65,7 +89,7 @@ podman run --rm -it \
     fi
     echo \"✅ Build successful: \$DRV\"
 
-    # --- 3. Copy & Activate ---
+    # --- 4. Copy & Activate ---
     echo 'Ns Copying closure to remote...'
     export NIX_SSHOPTS=\"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /root/.ssh/$SSH_KEY_NAME\"
     nix copy --to \"ssh://$TARGET_USER@$TARGET_HOST\" \"\$DRV\" --extra-experimental-features 'nix-command flakes'
