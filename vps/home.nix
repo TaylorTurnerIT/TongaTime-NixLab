@@ -19,7 +19,7 @@ let
                   {
                     handler = "proxy";
                     upstreams = [
-                      { dial = ["100.73.119.72:25565"]; } # <--- Verify this is correct
+                      { dial = ["100.73.119.72:25565"]; }
                     ];
                   }
                 ];
@@ -47,8 +47,7 @@ in
       After = [ "network-online.target" ];
     };
     Service = {
-      # Use --adapter json explicitly
-      ExecStart = "${caddyPackage}/bin/caddy run --config %h/.config/caddy/config.json --adapter json";
+      ExecStart = "${caddyPackage}/bin/caddy run --config %h/.config/caddy/config.json";
       Restart = "always";
       RestartSec = "10s";
     };
