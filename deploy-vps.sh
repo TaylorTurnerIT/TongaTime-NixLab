@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # --- Configuration ---
-DEFAULT_HOST="vps-gateway"
+DEFAULT_HOST="vps-proxy"
 FLAKE=".#vps-proxy"   # Ensure this matches your flake output name!
 DEPLOYER_IMAGE="homelab-deployer:latest"
 LOG_DIR="logs"
@@ -77,36 +77,39 @@ podman run --rm -it \
   -e FLAKE="$FLAKE" \
   "$DEPLOYER_IMAGE" \
   bash -c "
-    # 1. Setup Writable SSH Environment
+    # Setup Writable SSH Environment
     mkdir -p /root/.ssh
     cp -r /mnt/ssh_keys/* /root/.ssh/ 2>/dev/null || true
     chmod 700 /root/.ssh
     chmod 600 /root/.ssh/* 2>/dev/null || true
     
-    # Configure SSH to use ALL keys found (Fix for IdentityFile error)
+    # Configure SSH Config
     echo 'Host $TARGET' >> /root/.ssh/config
     echo '    StrictHostKeyChecking no' >> /root/.ssh/config
     echo '    UserKnownHostsFile /dev/null' >> /root/.ssh/config
-    
-    # Loop through keys and add them as IdentityFile
-    # We use \$key to ensure the variable is evaluated INSIDE the container, not on the host
-    for key in /root/.ssh/*; do
-        if [ -f \"\$key\" ] && [[ ! \"\$key\" == *.pub ]] && [[ ! \"\$key\" == *config ]] && [[ ! \"\$key\" == *known_hosts* ]]; then
-             echo \"    IdentityFile \$key\" >> /root/.ssh/config
-        fi
-    done
 
-    # 2. Execute Command (With Retry Loop)
+    if [[ -n \"\$SSH_KEY_NAME\" ]] && [[ -f \"/root/.ssh/\$SSH_KEY_NAME\" ]]; then
+        # OPTION A: User specified a key. Use ONLY that key.
+        echo \"    IdentityFile /root/.ssh/\$SSH_KEY_NAME\" >> /root/.ssh/config
+        echo \"    IdentitiesOnly yes\" >> /root/.ssh/config
+    else
+        # OPTION B: Try all keys (Fallback)
+        for key in /root/.ssh/*; do
+            if [ -f \"\$key\" ] && [[ ! \"\$key\" == *.pub ]] && [[ ! \"\$key\" == *config ]] && [[ ! \"\$key\" == *known_hosts* ]]; then
+                 echo \"    IdentityFile \$key\" >> /root/.ssh/config
+            fi
+        done
+    fi
+
+    # Execute Command (With Retry Loop)
     while true; do
         if [ \"\$MODE\" == \"install\" ]; then
             echo '🔥 Nuking and Installing NixOS on $TARGET...'
             
             if nixos-anywhere \
                 --flake \"\$FLAKE\" \
-                --build-on-remote \
-                ubuntu@\"\$TARGET\" \
-                -- \
-                --use-remote-sudo; then
+                --build-on remote \
+                ubuntu@\"\$TARGET\"; then
                 
                 echo '✅ Installation Complete!'
                 break
