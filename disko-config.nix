@@ -17,7 +17,7 @@
               };
             };
             root = {
-              size = "100%"; # The entire available space - ESP size
+              size = "100%"; # The entire available space minus ESP size
               content = {
                 type = "filesystem";
                 format = "ext4";
