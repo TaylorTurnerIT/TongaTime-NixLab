@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 {
-    config.virtualisation.oci-containers.containers.minecraft = {
+    virtualisation.oci-containers.containers.minecraft = {
         /*
             Minecraft Server Container
             This container runs a Minecraft server using the itzg/minecraft-server image.
@@ -49,6 +49,7 @@
         MEMORY = "6G";
         MAX_PLAYERS = "8";
         MOTD = ''§6✦ §l§6TONGA§eTIME§r §6✦ §r§7tongatime.us §b▸ §fIs it Tonga Time?§7§o[1.20+]'';
+        ICON = "https://icons.iconarchive.com/icons/chrisl21/minecraft/48/Computer-icon.png";
         USE_MEOWICE_FLAGS = "true"; 
         DIFFICULTY = "2";
         PVP = "false";
