@@ -31,3 +31,7 @@
 !deploy-vps.sh
 !vps/
 !vps/*.nix
+
+# Add markdown files
+!TODO.md
+!README.md
