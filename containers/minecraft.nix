@@ -20,6 +20,7 @@
                 - MEMORY: Allocates 6GB of RAM to the server.
                 - MAX_PLAYERS: Sets the maximum number of players to 8.
                 - MOTD: Custom message of the day with colors and formatting.
+                - ICON: URL to a custom server icon.
                 - USE_MEOWICE_FLAGS: Enables custom performance flags for better performance.
                 - DIFFICULTY, PVP, SPAWN_PROTECTION: Configures game settings.
                 - OPS and WHITELIST: Sets up server operators and whitelist for player access.
