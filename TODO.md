@@ -10,3 +10,7 @@
 
 - [ ] **Migrate off of Forge-VTT**
       Create an automated pipeline to migrate a game and give it a dedicated subdomain 
+
+- [ ] **Setup NAS on homelab**
+
+- [ ] **Migrate all volumes to NAS**
