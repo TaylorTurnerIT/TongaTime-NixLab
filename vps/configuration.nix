@@ -34,7 +34,10 @@
     22    # SSH (We will harden this below)
     25565 # Minecraft Public Access
   ];
-  networking.firewall.allowedUDPPorts = [ 25565 ]; # Voice Chat (Simple Voice Chat mod)
+  networking.firewall.allowedUDPPorts = [
+    41641 # TAILSCALE DIRECT CONNECT (Required for low latency)
+    25565 # Voice Chat (Simple Voice Chat mod) 
+  ]; 
 
   # 2. SSH Hardening
   services.openssh = {
