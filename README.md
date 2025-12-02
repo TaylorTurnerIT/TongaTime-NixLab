@@ -21,14 +21,14 @@ The network utilizes a **Zero Trust** model. No ports are open on the Homelab's 
 flowchart LR
     User(Public Internet User)
     
-    subgraph VPS [Oracle Cloud VPS (Ubuntu + Nix)]
+    subgraph VPS ["Oracle Cloud VPS (Ubuntu + Nix)"]
         direction TB
         Ingress[Ingress :25565]
         CaddyL4[Caddy Layer 4 Proxy]
         TS_VPS[Tailscale Interface]
     end
 
-    subgraph Home [Homelab (NixOS)]
+    subgraph Home ["Homelab (NixOS)"]
         direction TB
         TS_Home[Tailscale Interface]
         Podman[Podman OCI Backend]
