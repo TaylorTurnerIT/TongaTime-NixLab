@@ -64,10 +64,10 @@
     };
 
     # Open internal port 25565 for Minecraft server 
-    networking.firewall = {
-    allowedTCPPorts = [ 25565 ];
-    allowedUDPPorts = [ 25565 ];
-    };
+    # networking.firewall = {
+    # allowedTCPPorts = [ 25565 ];
+    # allowedUDPPorts = [ 25565 ];
+    # };
 
     # Ensure the Minecraft data directory exists with correct permissions
     # 07551 = drwxr-xr-x, 1000 = uid for 'minecraft' user, 1000 = gid for 'minecraft' group
