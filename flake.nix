@@ -47,7 +47,7 @@
 
       modules = [ 
         ./vps/home.nix
-        sops-nix.homeManagerModules.sops 
+        # sops-nix.homeManagerModules.sops 
         ];
     };
   };
