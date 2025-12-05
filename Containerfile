@@ -16,7 +16,8 @@ RUN nix profile add \
     nixpkgs#nixos-rebuild \
     github:nix-community/nixos-anywhere \
     nixpkgs#dnscontrol \
-    nixpkgs#sops
+    nixpkgs#sops \
+    nixpkgs#yq-go
 
 # --- Pre-fetch nixos-anywhere ---
 # nixos-anywhere is used for initial installs
