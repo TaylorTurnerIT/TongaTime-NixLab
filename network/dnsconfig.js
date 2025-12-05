@@ -1,3 +1,5 @@
+var run = require('child_process').execSync;
+
 // Define Providers
 var REG_NONE = NewRegistrar("none");
 var CF = NewDnsProvider("cloudflare");
@@ -7,45 +9,36 @@ var PROVIDERS = {
   "none": REG_NONE
 };
 
-// Load and Parse YAML Data from Environment Variable
-var rawData = process.env.DNS_ZONES_JSON;
-if (!rawData) {
-  throw new Error("❌ Error: DNS_ZONES_JSON environment variable is missing.");
+// Decrypt & Parse Zone Config (In-Memory)
+// We execute sops inside the container to read the encrypted YAML file
+// and convert it to JSON for parsing.
+try {
+  // Note: This assumes the container mounts the file at /work/network/dns_zones.yaml
+  var rawZones = run("sops -d network/dns_zones.yaml | yq -o=json").toString();
+} catch (e) {
+  throw new Error("❌ Failed to decrypt zones. Ensure sops/age keys are mounted.\n" + e.message);
 }
 
-var config = JSON.parse(rawData);
+var config = JSON.parse(rawZones);
 
-
-/*
-    Define Cloudflare Proxy Modifiers
-
-    This script allows us to manage the DNS records dynamically based on dns_zones.enc.yaml configuration. This file shouldn't need to be edited directly; instead, modify the YAML file and let the deployment script handle the rest.
-
-*/
+// Generate Domains
 for (var domainName in config.domains) {
   var domainData = config.domains[domainName];
   var records = [];
 
-  // Process Records
   if (domainData.records) {
     for (var i = 0; i < domainData.records.length; i++) {
       var r = domainData.records[i];
       var modifiers = [];
       
-      // Handle Cloudflare Proxy Toggle
-      if (r.proxied === true) {
-        modifiers.push(CF_PROXY_ON);
-      } else if (r.proxied === false) {
-        modifiers.push(CF_PROXY_OFF);
-      }
+      // Handle Cloudflare Proxy
+      if (r.proxied === true) modifiers.push(CF_PROXY_ON);
+      if (r.proxied === false) modifiers.push(CF_PROXY_OFF);
 
-      // Add Record
-      // This dynamically calls A(), CNAME(), TXT(), etc.
       records.push(DnsRecord(r.type, r.name, r.target, modifiers));
     }
   }
 
-  // Register the Domain
   D(domainName, 
     REG_NONE, 
     DnsProvider(PROVIDERS[domainData.provider]), 
