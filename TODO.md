@@ -1,6 +1,6 @@
 ## TODO List
 
-- [ ] **sops-nix**
+- [X] **sops-nix**
       Secret management declaratively
 
 - [ ] **Declarative DNS**
