@@ -27,6 +27,7 @@
 !deploy-nix.sh
 !Containerfile
 !build-deployer.sh
+!deploy-dns.sh
 
 # Allow VPS proxy deployment script
 !deploy-vps.sh
