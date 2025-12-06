@@ -42,8 +42,7 @@ flowchart LR
         CaddyRev[Caddy Reverse Proxy]
     end
 
-    User -->|Connects to Public IP| Ingress
-    Ingress --> CaddyL4
+    User -->|Connects to Public IP| CaddyL4
     CaddyL4 -->|Proxy| TS_VPS
     TS_VPS -.->|Encrypted Tunnel| TS_Home
     TS_Home --> MC
