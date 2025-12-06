@@ -57,3 +57,5 @@
 - [ ] **Create a website that shows off the homelab and its infrastructure as a realtime experience**
 
 - [ ] **Implement load balancing on the website to spin up and spin down new containers**
+
+- [ ] **Research projects to practice for the CKA**
