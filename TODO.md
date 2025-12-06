@@ -29,3 +29,5 @@
 - [ ] **Convert all containers to run rootless**
 
 - [ ] **Integrate Jexpanel as a centralized game server management platform.**
+
+- [ ] **Create NixOS Module to generate secure plug-and-play integration of new containers**
