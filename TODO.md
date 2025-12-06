@@ -25,3 +25,5 @@
 - [ ] **Migrate all volumes to NAS**
 
 - [ ] **Setup Jellyfin**
+
+- [ ] **Convert all containers to run rootless**
