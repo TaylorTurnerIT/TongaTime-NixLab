@@ -32,6 +32,24 @@
 
 - [ ] **Create NixOS Module to generate secure plug-and-play integration of new containers**
 
-- [ ] **Integrate static image versions**
+- [ ] **Enforce image pinning for further reproducibility**
 
 - [ ] **Create an update tracker for container images, security updates, etc.**
+
+- [ ] **Research nix-test to further verify builds before deployment**
+
+- [ ] **Integrate a Disaster Recovery (DR) plan to create and restore backups rapidly.**
+
+- [ ] **Research systemd LoadCredential vs sops-nix for secret management**
+
+- [ ] **Integrate pre-commit validation step to check syntax, secret encryption, etc.**
+
+- [ ] **Install Prometheus and Grafana montioring**
+
+- [ ] **Add mobile notifications for issues with quick-repair macros (such as restarting the service)**
+
+- [ ] **Integrate container scanning and SBOM generation with Trivy**
+
+- [ ] **Add policy enforcement for container parameters**
+
+- [ ] **Research Identity and Access Management with Service Portal using Authentik**
