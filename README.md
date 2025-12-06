@@ -29,7 +29,6 @@ flowchart LR
     
     subgraph VPS ["Oracle Cloud VPS (Ubuntu + Nix)"]
         direction TB
-        Ingress[Ingress :25565]
         CaddyL4[Caddy Layer 4 Proxy]
         TS_VPS[Tailscale Interface]
     end
@@ -45,7 +44,7 @@ flowchart LR
 
     User -->|Connects to Public IP| Ingress
     Ingress --> CaddyL4
-    CaddyL4 -->|Proxy via 100.x.y.z| TS_VPS
+    CaddyL4 -->|Proxy| TS_VPS
     TS_VPS -.->|Encrypted Tunnel| TS_Home
     TS_Home --> MC
     CaddyRev --> Homepage
