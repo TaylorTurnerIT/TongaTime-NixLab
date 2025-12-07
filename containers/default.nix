@@ -10,6 +10,7 @@
   imports = [
     ./homepage.nix
     ./minecraft.nix
+    ./foundry_portal.nix
   ];
 
   # Global Podman Configuration
