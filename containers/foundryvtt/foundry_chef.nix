@@ -25,16 +25,15 @@
             # FOUNDRY_ADMIN_KEY = ""
 
             # Disable telemetry data collection
-            FOUNDRY_TELEMETRY = "false"
+            FOUNDRY_TELEMETRY = "false";
 
             # Disable IP discovery, this will likely timeout and delay startup
-            FOUNDRY_IP_DISCOVERY = "false"
-            FOUNDRY_HOSTNAME = "foundry.tongatime.us"
-            FOUNDRY_ROUTE_PREFIX = "/chef"
+            FOUNDRY_IP_DISCOVERY = "false";
+            FOUNDRY_HOSTNAME = "foundry.tongatime.us";
+            FOUNDRY_ROUTE_PREFIX = "/chef";
             
             # Foundry optimizations 
-            FOUNDRY_COMPRESS_WEBSOCKET = "true"
-            FOUNDRY
+            FOUNDRY_COMPRESS_WEBSOCKET = "true";
             };
         };
 }
