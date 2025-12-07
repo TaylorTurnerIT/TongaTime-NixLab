@@ -37,7 +37,8 @@
         
         # Ensure the container's data directory exists with proper permissions
         systemd.tmpfiles.rules = [
-            "d /var/lib/foundry/chef 0755 root root - -"
+            "d /var/lib/foundry/chef 0755 1000 1000 - -"
+            "d /run/secrets 0755 1000 1000 - -"
         ];
 }
 
