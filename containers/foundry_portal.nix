@@ -51,53 +51,28 @@ let
         };
     };
     virtualisation.oci-containers.containers.foundry-portal = {
-        /*
-            Foundry Portal Container
-            This container runs Foundry Portal, a web frontend for managing multiple Foundry Virtual Tabletop (VTT) instances.
-
-            Configuration:
-            - Image:
-                - Uses the image built by the build-foundry-portal service.
-            - Ports:
-                - Maps port 5000 on the host to port 5000 in the container.
-                - Host: 5000 <--> Container: 5000
-            - Volumes:
-                - Maps /var/lib/foundry-portal/config.yaml to /app/config.yaml in the container
-                - Host:/var/lib/foundry-portal/config.yaml <--> Container:/app/config.yaml
-            - Auto Start:
-                - Container starts automatically on boot
-
-            Setup Instructions:
-            1. Create the config directory: sudo mkdir -p /var/lib/foundry-portal
-            2. Create your config.yaml at /var/lib/foundry-portal/config.yaml
-            3. Example config.yaml:
-                shared_data_mode: false
-                instances:
-                  - name: "In Golden Flame"
-                    url: "https://foundry.tongatime.us/crunch/ingoldenflame"
-                  - name: "Genesis"
-                    url: "https://foundry.tongatime.us/chef/genesis"
-
-            Reference:
-            https://github.com/TaylorTurnerIT/foundry-portal
-        */
-
-        # Container image
         image = "foundry-portal:latest";
-
-        # Auto start container on boot
         autoStart = true;
+        
+        # NETWORK FIX: Use host networking to bypass firewall blocks on port 30000
+        extraOptions = [ "--network=host" ];
+        
+        # NO PORTS needed (we are on host network now)
+        # ports = [ "5000:5000" ]; 
 
-        # Map ports: Host:Container
-        ports = [ "5000:5000" ];
-
-        # Persistent Storage - mount config file
         volumes = [
-            "${configYaml}:/app/config.yaml:ro"
+            "${configYaml}:/app/config_declarative.yaml:ro"
+        ];
+
+        # Overwrite startup command to install config
+        cmd = [ 
+            "/bin/sh" 
+            "-c" 
+            "cp /app/config_declarative.yaml /app/config.yaml && python app.py" 
         ];
     };
 
-    systemd.services.podman-foundry-portal = {
+    sysystemd.services.podman-foundry-portal = {
         requires = [ "build-foundry-portal.service" ];
         after = [ "build-foundry-portal.service" ];
     };
