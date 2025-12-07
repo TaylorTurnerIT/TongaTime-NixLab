@@ -15,3 +15,7 @@ domains:
         name: "proxmox"
         target: "100.73.119.72" 
         proxied: false
+      - type: A
+        name: "foundry"
+        target: "100.73.119.72"
+        proxied: false
