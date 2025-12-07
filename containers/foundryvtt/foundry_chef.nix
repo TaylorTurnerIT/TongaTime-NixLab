@@ -14,7 +14,7 @@
         # Persistent Storage
         volumes = [
             "/var/lib/foundry/chef:/data"
-            "${config.sops.templates."foundry_secrets.json".path}:/run/secrets/config.json:ro"
+            "${config.sops.templates."foundry_secrets.json".path}:/run/secrets/secrets.json:ro"
         ];
 
         # Environment Variables
@@ -39,7 +39,7 @@
         systemd.tmpfiles.rules = [
             "d /var/lib/foundry/chef 0755 1000 1000 - -"
             "d /run/secrets 0755 1000 1000 - -"
-            "f /run/secrets/config.json 0644 1000 1000 - -"
+            "f /run/secrets/secrets.json 0644 1000 1000 - -"
         ];
 }
 
