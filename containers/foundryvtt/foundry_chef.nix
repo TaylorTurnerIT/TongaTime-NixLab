@@ -19,11 +19,6 @@
 
         # Environment Variables
         environment = {
-            # Handle using an injected secrets.json
-            # FOUNDRY_USERNAME = ""
-            # FOUNDRY_PASSWORD = ""
-            # FOUNDRY_ADMIN_KEY = ""
-
             # Disable telemetry data collection
             FOUNDRY_TELEMETRY = "false";
 
