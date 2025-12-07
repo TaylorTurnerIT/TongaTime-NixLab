@@ -84,7 +84,7 @@ let
                     url: "https://foundry.tongatime.us/chef/genesis"
 
             Reference:
-            https://github.com/daxiongmao87/foundry-portal
+            https://github.com/TaylorTurnerIT/foundry-portal
         */
 
         # Container image
