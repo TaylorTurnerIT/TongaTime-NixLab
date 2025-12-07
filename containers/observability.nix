@@ -85,6 +85,8 @@ in {
       environment = {
         GF_SERVER_ROOT_URL = "https://grafana.tongatime.us";
         GF_SECURITY_ADMIN_USER = "admin";
+        GF_SERVER_HTTP_ADDR = "0.0.0.0";
+        GF_SERVER_HTTP_PORT = "3010";
         # Initial password, change immediately or use sops-nix to inject GF_SECURITY_ADMIN_PASSWORD
       };
     };
