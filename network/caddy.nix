@@ -84,6 +84,15 @@ in
         '';
       };
 
+      /*
+        Service:  FoundryVTT (Foundry Portal + Game Servers)
+                  FoundryVTT portal and game servers for hosting tabletop RPGs.
+                  
+                  foundry.tongatime.us -> Foundry Portal
+                  foundry.tongatime.us/chef -> Chef's Game Server
+
+        Note: The Foundry Portal runs on port 5000 internally, while Chef's Game server runs on port 30001.
+      */
       "foundry.${domain}" = {
         useACMEHost = domain;
         extraConfig = ''
@@ -97,6 +106,17 @@ in
             reverse_proxy http://127.0.0.1:5000
           }
         '';
+      };
+
+      /*
+        Service:  Grafana (Dashboard)
+                  Grafana dashboard for quick access to services and status.
+                  
+                  grafana.tongatime.us -> http://127.0.0.1:3010
+      */
+      "grafana.${domain}" = {
+        useACMEHost = domain;
+        extraConfig = "reverse_proxy http://127.0.0.1:3010";
       };
 
       /* DEFAULT

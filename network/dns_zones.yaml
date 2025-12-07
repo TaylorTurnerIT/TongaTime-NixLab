@@ -19,3 +19,7 @@ domains:
         name: "foundry"
         target: "100.73.119.72"
         proxied: false
+      - type: A
+        name: "grafana"
+        target: "100.73.119.72"
+        proxied: false
