@@ -42,6 +42,9 @@
     # We leave the owner as root because Podman runs as root (for now)
     owner = "root";
   };
+  sops.secrets.foundry_admin_hash = {
+    owner = "root"; # Podman runs as root by default
+  };
 
   # users.users.nixos.openssh.authorizedKeys.keys = [
   #   # Public Keys default nixos user
