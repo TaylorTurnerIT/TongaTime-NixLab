@@ -7,11 +7,6 @@ let
         shared_data_mode = false;
         instances = [
             {
-                name = "In Golden Flame";
-                # Use the internal IP or Tailscale IP to avoid loopback/DNS issues
-                url = "http://100.73.119.72:30000/crunch/ingoldenflame"; 
-            }
-            {
                 name = "Genesis";
                 url = "http://100.73.119.72:30000/chef/genesis";
             }
