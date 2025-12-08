@@ -22,8 +22,6 @@
     # Persistent storage - all Gitea data
     volumes = [
       "/var/lib/gitea:/data"
-      "/etc/timezone:/etc/timezone:ro"
-      "/etc/localtime:/etc/localtime:ro"
       "${config.sops.secrets.gitea_secret_key.path}:/run/secrets/gitea_secret_key:ro"
       "${config.sops.secrets.github_mirror_token.path}:/run/secrets/github_mirror_token:ro"
     ];
