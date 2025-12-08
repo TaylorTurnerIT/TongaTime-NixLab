@@ -23,3 +23,7 @@ domains:
         name: "grafana"
         target: "100.73.119.72"
         proxied: false
+      - type: A
+        name: "git"
+        target: "100.73.119.72" # Homelab Tailscale IP
+        proxied: false

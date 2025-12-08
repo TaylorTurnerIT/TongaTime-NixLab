@@ -111,7 +111,7 @@ in
       /*
         Service:  Grafana (Dashboard)
                   Grafana dashboard for quick access to services and status.
-                  
+
                   grafana.tongatime.us -> http://127.0.0.1:3010
       */
       "grafana.${domain}" = {
@@ -119,10 +119,28 @@ in
         extraConfig = "reverse_proxy http://127.0.0.1:3010";
       };
 
+      /*
+        Service:  Gitea (Git Server)
+                  Self-hosted Git service with GitHub mirroring.
+
+                  git.tongatime.us -> http://127.0.0.1:3001
+      */
+      "git.${domain}" = {
+        useACMEHost = domain;
+        extraConfig = ''
+          reverse_proxy http://127.0.0.1:3001 {
+            # Gitea requires these headers for proper operation
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+          }
+        '';
+      };
+
       /* DEFAULT
         Service:  Homepage (Dashboard)
                   Homepage dashboard for quick access to services and status.
-                  
+
                   tongatime.us -> http://127.0.0.1:3000
       */
       "${domain}" = {

@@ -13,6 +13,7 @@
     ./foundryvtt/foundry_portal.nix
     ./foundryvtt/foundry_chef.nix
     ./observability.nix
+    ./gitea.nix
   ];
 
   # Global Podman Configuration

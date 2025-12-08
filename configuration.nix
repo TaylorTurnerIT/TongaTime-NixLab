@@ -59,7 +59,15 @@
         "foundry_admin_key": "${config.sops.placeholder.foundry_admin_pass}"
       }
     '';
-    mode = "0444"; 
+    mode = "0444";
+  };
+
+  # --- Gitea Secrets ---
+  sops.secrets.gitea_secret_key = {
+    owner = "root"; # Podman runs as root
+  };
+  sops.secrets.github_mirror_token = {
+    owner = "root";
   };
 
   # users.users.nixos.openssh.authorizedKeys.keys = [
