@@ -48,6 +48,7 @@
       # Service configuration
       GITEA__service__DISABLE_REGISTRATION = "true";
       GITEA__service__REQUIRE_SIGNIN_VIEW = "false";
+      ENABLE_PASSKEY_AUTHENTICATION = "true";
 
       # Repository settings
       GITEA__repository__ROOT = "/data/git/repositories";
