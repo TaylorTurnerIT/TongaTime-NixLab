@@ -56,6 +56,9 @@
       # Repository settings
       GITEA__repository__ROOT = "/data/git/repositories";
       GITEA__repository__ENABLE_PUSH_CREATE_USER = "true";
+
+      # Actions configuration
+      GITEA__actions__ENABLED = "true";
     };
   };
 
