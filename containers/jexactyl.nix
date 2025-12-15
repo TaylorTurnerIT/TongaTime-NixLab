@@ -4,6 +4,12 @@ let
   user = "jexactyl";
   dataDir = "/var/lib/jexactyl";
 in {
+	# --- Secrets ---
+	sops.secrets.jexactyl_admin_password = { owner = "root"; }; # Only read by the init script
+	sops.secrets.jexactyl_db_password = { owner = user; };
+	sops.secrets.jexactyl_redis_password = { owner = user; };
+	sops.secrets.jexactyl_app_key = { owner = user; };
+	sops.secrets.jexactyl_app_url = { owner = user; };
 	# --- Create the Restricted User ---
 	users.users.${user} = {
 		isNormalUser = true;
