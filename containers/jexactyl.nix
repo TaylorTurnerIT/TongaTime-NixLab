@@ -3,18 +3,23 @@
 let
   user = "jexactyl";
   group = "users";
-  # Static UID is required for the socket path interpolation to work correctly
+  # We pin the UID to ensure the socket path (/run/user/1000/podman/podman.sock) 
+  # is predictable and matches the existing system user.
   uid = 1000; 
   dataDir = "/var/lib/jexactyl";
 in {
-  # --- 1. Define Secrets ---
-  sops.secrets.jexactyl_admin_password = { owner = "root"; }; 
+  # --- Secrets Management ---
+  # We explicitly define the secrets used by the Jexactyl services.
+  # Ownership is assigned to the service user so they can be read at runtime.
+  sops.secrets.jexactyl_admin_password = { owner = "root"; }; # Only used by the one-shot init script
   sops.secrets.jexactyl_db_password = { owner = user; };
   sops.secrets.jexactyl_redis_password = { owner = user; };
   sops.secrets.jexactyl_app_key = { owner = user; };
   sops.secrets.jexactyl_app_url = { owner = user; };
 
-  # --- 2. Create the Restricted User ---
+  # --- User Configuration ---
+  # Create a dedicated user for Jexactyl. This user requires 'linger' enabled
+  # so that its rootless Podman socket remains active even when not logged in.
   users.users.${user} = {
     isNormalUser = true;
     description = "Jexactyl Game Server User";
@@ -22,27 +27,33 @@ in {
     linger = true;
     home = dataDir;
     createHome = true;
-    uid = uid; # Explicit UID required for string interpolation
+    uid = uid; 
   };
 
-  # --- 3. Create Directory Structure ---
-  # Ensures all paths exist with correct permissions before startup
+  # --- Directory Structure & Permissions ---
+  # Since we are running rootless containers, we must ensure the host directory 
+  # structure exists with the correct ownership before the containers start.
   systemd.tmpfiles.rules = [
+    # Wings Directories
     "d ${dataDir}/wings         0755 ${user} ${group} - -"
     "d ${dataDir}/wings/config  0755 ${user} ${group} - -"
     "d ${dataDir}/wings/data    0755 ${user} ${group} - -"
     "d ${dataDir}/wings/backups 0755 ${user} ${group} - -"
     
+    # Panel Directories
     "d ${dataDir}/panel         0755 ${user} ${group} - -"
     "d ${dataDir}/panel/var     0755 ${user} ${group} - -"
     "d ${dataDir}/panel/logs    0755 ${user} ${group} - -"
     "d ${dataDir}/panel/nginx   0755 ${user} ${group} - -"
     
+    # Database & Redis Directories
     "d ${dataDir}/database      0755 ${user} ${group} - -"
     "d ${dataDir}/redis         0755 ${user} ${group} - -"
   ];
 
-  # --- 4. Generate Environment File ---
+  # --- Environment Configuration ---
+  # Generate the .env file required by the Jexactyl panel, injecting secrets 
+  # from sops-nix where appropriate.
   sops.templates."jexactyl.env".content = ''
     APP_URL=${config.sops.placeholder.jexactyl_app_url}
     APP_KEY=${config.sops.placeholder.jexactyl_app_key}
@@ -60,7 +71,8 @@ in {
     REDIS_PASSWORD=${config.sops.placeholder.jexactyl_redis_password}
   '';
 
-  # --- 5. The Web Stack (Panel + DB + Redis) ---
+  # --- Service Containers (Panel Stack) ---
+  # These containers run the web panel, database, and cache.
   virtualisation.oci-containers.containers = {
     jexactyl-db = {
       image = "mariadb:10.11";
@@ -68,7 +80,7 @@ in {
       environment = {
         MYSQL_DATABASE = "panel";
         MYSQL_USER = "jexactyl";
-        MYSQL_PASSWORD = "SOPS_PLACEHOLDER";
+        MYSQL_PASSWORD = "SOPS_PLACEHOLDER"; # Handled by sops template
         MYSQL_ROOT_PASSWORD = "${config.sops.placeholder.jexactyl_db_password}";
       };
       environmentFiles = [ config.sops.templates."jexactyl.env".path ];
@@ -104,7 +116,9 @@ in {
     };
   };
 
-  # --- 6. Wings (The Node) ---
+  # --- Wings Daemon (Rootless) ---
+  # Wings controls the actual game servers. We run this as a user service
+  # so that all game servers are spawned within the user's namespace.
   systemd.services.jexactyl-wings = {
     description = "Jexactyl Wings (Rootless)";
     wantedBy = [ "multi-user.target" ];
@@ -114,6 +128,7 @@ in {
       Group = group;
       WorkingDirectory = "${dataDir}/wings";
       Restart = "always";
+      # We bind the user's rootless Podman socket to the container so Wings can spawn sibling containers.
       ExecStart = let
         podman = "${pkgs.podman}/bin/podman";
       in ''
@@ -129,14 +144,18 @@ in {
     };
   };
 
-  # --- 7. Networking & Initialization ---
+  # --- Network Initialization ---
+  # Ensures the dedicated bridge network exists before containers start.
   systemd.services.init-jexactyl-network = {
     script = "${pkgs.podman}/bin/podman network exists jexactyl-net || ${pkgs.podman}/bin/podman network create jexactyl-net";
     wantedBy = [ "multi-user.target" ];
   };
 
+  # --- First-Run Initialization ---
+  # This one-shot service runs only on the first deployment to seed the database
+  # and create the initial admin user. It is skipped if .setup_complete exists.
   systemd.services.jexactyl-init = {
-    description = "Initialize Jexactyl";
+    description = "Initialize Jexactyl Database and Admin User";
     after = [ "podman-jexactyl-panel.service" "podman-jexactyl-db.service" ]; 
     requires = [ "podman-jexactyl-panel.service" "podman-jexactyl-db.service" ];
     wantedBy = [ "multi-user.target" ];
