@@ -15,6 +15,7 @@
     ./observability.nix
     ./gitea.nix
     ./act_runner.nix
+    ./jexactyl.nix
   ];
 
   # Global Podman Configuration
