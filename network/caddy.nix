@@ -137,6 +137,23 @@ in
         '';
       };
 
+      /*
+        Service:  Jexactyl Panel and Node (Game Server Management)
+                  Jexactyl panel for managing game servers.
+
+                  panel.tongatime.us -> Jexactyl Panel
+                  node.tongatime.us -> Jexactyl Node (Wings)
+      */
+      "panel.${domain}" = {
+        useACMEHost = domain;
+        extraConfig = "reverse_proxy http://127.0.0.1:8081";
+      };
+      
+      "node.${domain}" = {
+        useACMEHost = domain;
+        extraConfig = "reverse_proxy http://127.0.0.1:8082";
+      };
+
       /* DEFAULT
         Service:  Homepage (Dashboard)
                   Homepage dashboard for quick access to services and status.
