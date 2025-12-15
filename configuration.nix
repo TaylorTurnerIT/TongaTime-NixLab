@@ -96,6 +96,7 @@
 			CACHE_DRIVER=redis
 			SESSION_DRIVER=redis
 			QUEUE_CONNECTION=redis
+			RECAPTCHA_ENABLED=false
 		'';
 	};
 

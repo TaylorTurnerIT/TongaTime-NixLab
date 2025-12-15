@@ -22,11 +22,11 @@
   };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, disko, sops-nix, ... }: {
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, disko, sops-nix, ... }@inputs: {
     # --- HOME SERVER ---
     nixosConfigurations.homelab = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = { inherit inputs; }; # Ensure inputs are passed to modules
+      # specialArgs = { inherit (inputs) self; }; # Ensure inputs are passed to modules
       modules = [
         disko.nixosModules.disko
         ./disko-config.nix

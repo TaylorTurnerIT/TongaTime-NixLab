@@ -41,6 +41,22 @@
         "type": "github"
       }
     },
+    "jexactyl-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763505496,
+        "narHash": "sha256-iq/xF+i9WBLprR4AJSGxE5nfkPpl4E9Iy7yOmC9K9vc=",
+        "owner": "jexactyl",
+        "repo": "jexactyl",
+        "rev": "02a9df4de2586b206ad8dd0d37f7a87118809622",
+        "type": "github"
+      },
+      "original": {
+        "owner": "jexactyl",
+        "repo": "jexactyl",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1751274312,
@@ -77,6 +93,7 @@
       "inputs": {
         "disko": "disko",
         "home-manager": "home-manager",
+        "jexactyl-src": "jexactyl-src",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "sops-nix": "sops-nix"
