@@ -73,10 +73,12 @@ in
 			[ -f $BUILD_DIR/LICENSE.md ] || echo "MIT License" > $BUILD_DIR/LICENSE.md
 			[ -f $BUILD_DIR/README.md ] || echo "# Jexactyl" > $BUILD_DIR/README.md
 
-			# --- PATCH: Universal Package Manager Detection ---
-			# This script checks for common package managers to install Python3/Pip
-			# regardless of whether the base is Alpine, Debian, or Red Hat.
+			# --- PATCH: Universal Package Manager Detection (Root Mode) ---
 			echo "" >> $BUILD_DIR/Containerfile
+			
+			# 1. Switch to ROOT to allow package installation
+			echo "USER root" >> $BUILD_DIR/Containerfile
+			
 			echo "RUN set -e; \\" >> $BUILD_DIR/Containerfile
 			echo "    if command -v apk >/dev/null; then \\" >> $BUILD_DIR/Containerfile
 			echo "        apk add --no-cache python3 py3-pip; \\" >> $BUILD_DIR/Containerfile
@@ -90,11 +92,13 @@ in
 			echo "    elif command -v yum >/dev/null; then \\" >> $BUILD_DIR/Containerfile
 			echo "        yum install -y python3 python3-pip && yum clean all; \\" >> $BUILD_DIR/Containerfile
 			echo "    else \\" >> $BUILD_DIR/Containerfile
-			echo "        echo 'Error: No supported package manager found (apk, apt, dnf, yum, microdnf).'; exit 1; \\" >> $BUILD_DIR/Containerfile
+			echo "        echo 'Error: No supported package manager found.'; exit 1; \\" >> $BUILD_DIR/Containerfile
 			echo "    fi && \\" >> $BUILD_DIR/Containerfile
-			# Remove the conflicting binary and install via pip
 			echo "    rm -f /usr/local/bin/yacron && \\" >> $BUILD_DIR/Containerfile
 			echo "    pip3 install yacron --break-system-packages || pip3 install yacron" >> $BUILD_DIR/Containerfile
+			
+			# 2. Switch back to the limited user (Jexactyl Standard)
+			echo "USER www-data" >> $BUILD_DIR/Containerfile
 			# ---------------------------------------
 
 			${pkgs.podman}/bin/podman build \
