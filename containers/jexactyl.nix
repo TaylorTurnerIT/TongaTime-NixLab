@@ -1,98 +1,114 @@
 { config, pkgs, lib, inputs, ... }:
 
 let
-  # Constants
-  podmanNetwork = "jexactyl_net";
-  dataDir = "/var/lib/jexactyl";
-  
-  # The source code from the flake input
-  src = inputs.jexactyl-src;
+	# Constants
+	podmanNetwork = "jexactyl_net";
+	dataDir = "/var/lib/jexactyl";
+	
+	# The source code from the flake input
+	src = inputs.jexactyl-src;
 in
 {
-  # ---------------------------------------------------------
-  # PRE-FLIGHT: Filesystem & Network
-  # ---------------------------------------------------------
-  
-  systemd.tmpfiles.rules = [
-	"d ${dataDir}/mariadb 0700 999 999 -"
-	"d ${dataDir}/redis 0700 999 999 -"
-	"d ${dataDir}/panel/storage 0755 1000 1000 -"
-	"d ${dataDir}/panel/logs 0755 1000 1000 -"
-	"d ${dataDir}/wings/config 0700 0 0 -"
-	"d ${dataDir}/wings/data 0700 0 0 -"
-  ];
+	# ---------------------------------------------------------
+	# PRE-FLIGHT: Filesystem & Network
+	# ---------------------------------------------------------
+	
+	systemd.tmpfiles.rules = [
+		"d ${dataDir}/mariadb 0700 999 999 -"
+		"d ${dataDir}/redis 0700 999 999 -"
+		"d ${dataDir}/panel/storage 0755 1000 1000 -"
+		"d ${dataDir}/panel/logs 0755 1000 1000 -"
+		"d ${dataDir}/wings/config 0700 0 0 -"
+		"d ${dataDir}/wings/data 0700 0 0 -"
+	];
 
-  # Ensure the internal network exists before any container starts
-  systemd.services.init-jexactyl-network = {
-	description = "Create Jexactyl Internal Podman Network";
-	after = [ "network.target" "podman.service" ];
-	requires = [ "podman.service" ];
-	wantedBy = [ "multi-user.target" ];
-	serviceConfig.Type = "oneshot";
-	script = ''
-	  ${pkgs.podman}/bin/podman network exists ${podmanNetwork} || \
-	  ${pkgs.podman}/bin/podman network create ${podmanNetwork}
-	'';
-  };
+	# Ensure the internal network exists before any container starts
+	systemd.services.init-jexactyl-network = {
+		description = "Create Jexactyl Internal Podman Network";
+		after = [ "network.target" "podman.service" ];
+		requires = [ "podman.service" ];
+		wantedBy = [ "multi-user.target" ];
+		serviceConfig.Type = "oneshot";
+		script = ''
+		${pkgs.podman}/bin/podman network exists ${podmanNetwork} || \
+		${pkgs.podman}/bin/podman network create ${podmanNetwork}
+		'';
+	};
 
-  # ---------------------------------------------------------
-  # BUILDER SERVICE: Jexactyl Panel Image
-  # ---------------------------------------------------------
-  # This service checks if the current Flake input matches the last built image.
-  # If the Flake input changed (new commit), it triggers a rebuild.
-  
-  systemd.services.build-jexactyl-image = {
-    description = "Build Jexactyl Panel Image from Flake Source";
-    after = [ "podman.service" ];
-    requires = [ "podman.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      TimeoutStartSec = 900;
-    };
-    script = ''
-      # Define state file to track build version
-      STATE_FILE="${dataDir}/.built_hash"
-      CURRENT_HASH="${src}"
+	# ---------------------------------------------------------
+	# BUILDER SERVICE: Jexactyl Panel Image
+	# ---------------------------------------------------------
+	# This service checks if the current Flake input matches the last built image.
+	# If the Flake input changed (new commit), it triggers a rebuild.
+	
+	systemd.services.build-jexactyl-image = {
+		description = "Build Jexactyl Panel Image from Flake Source";
+		after = [ "podman.service" ];
+		requires = [ "podman.service" ];
+		wantedBy = [ "multi-user.target" ];
+		serviceConfig = {
+		Type = "oneshot";
+		TimeoutStartSec = 900;
+		};
+		script = ''
+		# Define state file to track build version
+		STATE_FILE="${dataDir}/.built_hash"
+		CURRENT_HASH="${src}"
 
-      # Check if we need to rebuild
-      if [ ! -f "$STATE_FILE" ] || [ "$(cat $STATE_FILE)" != "$CURRENT_HASH" ]; then
-        echo "Source changed. Building Jexactyl container from ${src}..."
+		# Check if we need to rebuild
+		if [ ! -f "$STATE_FILE" ] || [ "$(cat $STATE_FILE)" != "$CURRENT_HASH" ]; then
+			echo "Source changed. Building Jexactyl container from ${src}..."
 
-        # Create temporary build context
-        BUILD_DIR=$(mktemp -d)
-        trap "rm -rf $BUILD_DIR" EXIT
+			# Create temporary build context
+			BUILD_DIR=$(mktemp -d)
+			trap "rm -rf $BUILD_DIR" EXIT
 
-        # Copy source to build directory
-        cp -r ${src}/. $BUILD_DIR/
+			# Copy source to build directory
+			cp -r ${src}/. $BUILD_DIR/
 
-        # Create missing files
-        touch $BUILD_DIR/.npmrc
-        touch $BUILD_DIR/CHANGELOG.md
-        touch $BUILD_DIR/SECURITY.md
-        [ -f $BUILD_DIR/LICENSE.md ] || echo "MIT License" > $BUILD_DIR/LICENSE.md
-        [ -f $BUILD_DIR/README.md ] || echo "# Jexactyl" > $BUILD_DIR/README.md
+			# Create missing files
+			touch $BUILD_DIR/.npmrc
+			touch $BUILD_DIR/CHANGELOG.md
+			touch $BUILD_DIR/SECURITY.md
+			[ -f $BUILD_DIR/LICENSE.md ] || echo "MIT License" > $BUILD_DIR/LICENSE.md
+			[ -f $BUILD_DIR/README.md ] || echo "# Jexactyl" > $BUILD_DIR/README.md
 
-        # --- PATCH: Fix Yacron/Libz Conflict ---
-        echo "" >> $BUILD_DIR/Containerfile
-        echo "RUN apt-get update && apt-get install -y python3 python3-pip && \\" >> $BUILD_DIR/Containerfile
-        echo "    rm -f /usr/local/bin/yacron && \\" >> $BUILD_DIR/Containerfile
-        echo "    pip3 install yacron --break-system-packages && \\" >> $BUILD_DIR/Containerfile
-        echo "    apt-get clean && rm -rf /var/lib/apt/lists/*" >> $BUILD_DIR/Containerfile
-        # ---------------------------------------
+			# --- PATCH: Universal Package Manager Detection ---
+			# This script checks for common package managers to install Python3/Pip
+			# regardless of whether the base is Alpine, Debian, or Red Hat.
+			echo "" >> $BUILD_DIR/Containerfile
+			echo "RUN set -e; \\" >> $BUILD_DIR/Containerfile
+			echo "    if command -v apk >/dev/null; then \\" >> $BUILD_DIR/Containerfile
+			echo "        apk add --no-cache python3 py3-pip; \\" >> $BUILD_DIR/Containerfile
+			echo "    elif command -v apt-get >/dev/null; then \\" >> $BUILD_DIR/Containerfile
+			echo "        apt-get update && apt-get install -y python3 python3-pip && \\" >> $BUILD_DIR/Containerfile
+			echo "        apt-get clean && rm -rf /var/lib/apt/lists/*; \\" >> $BUILD_DIR/Containerfile
+			echo "    elif command -v microdnf >/dev/null; then \\" >> $BUILD_DIR/Containerfile
+			echo "        microdnf install -y python3 python3-pip && microdnf clean all; \\" >> $BUILD_DIR/Containerfile
+			echo "    elif command -v dnf >/dev/null; then \\" >> $BUILD_DIR/Containerfile
+			echo "        dnf install -y python3 python3-pip && dnf clean all; \\" >> $BUILD_DIR/Containerfile
+			echo "    elif command -v yum >/dev/null; then \\" >> $BUILD_DIR/Containerfile
+			echo "        yum install -y python3 python3-pip && yum clean all; \\" >> $BUILD_DIR/Containerfile
+			echo "    else \\" >> $BUILD_DIR/Containerfile
+			echo "        echo 'Error: No supported package manager found (apk, apt, dnf, yum, microdnf).'; exit 1; \\" >> $BUILD_DIR/Containerfile
+			echo "    fi && \\" >> $BUILD_DIR/Containerfile
+			# Remove the conflicting binary and install via pip
+			echo "    rm -f /usr/local/bin/yacron && \\" >> $BUILD_DIR/Containerfile
+			echo "    pip3 install yacron --break-system-packages || pip3 install yacron" >> $BUILD_DIR/Containerfile
+			# ---------------------------------------
 
-        ${pkgs.podman}/bin/podman build \
-          -t jexactyl-panel:local \
-          -f $BUILD_DIR/Containerfile \
-          $BUILD_DIR
+			${pkgs.podman}/bin/podman build \
+			-t jexactyl-panel:local \
+			-f $BUILD_DIR/Containerfile \
+			$BUILD_DIR
 
-        echo "$CURRENT_HASH" > "$STATE_FILE"
-        echo "Build complete."
-      else
-        echo "Source unchanged. Using existing image."
-      fi
-    '';
-};
+			echo "$CURRENT_HASH" > "$STATE_FILE"
+			echo "Build complete."
+		else
+			echo "Source unchanged. Using existing image."
+		fi
+		'';
+	};
 
 	# ---------------------------------------------------------
 	# CONTAINER DEFINITIONS
