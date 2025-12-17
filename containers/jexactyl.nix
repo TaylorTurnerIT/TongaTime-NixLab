@@ -194,6 +194,8 @@ in
 
 		extraOptions = [ 
 			"--network=${podmanNetwork}"
+			"--add-host=jexactyl-mariadb:10.89.2.2"
+			"--add-host=jexactyl-redis:10.89.2.3"
 		];
 	};
 
