@@ -80,10 +80,33 @@ in
         # This bypasses the need to guess the exact UID/Username.
         echo "RUN chmod -R 777 /var/www/pterodactyl/bootstrap/cache /var/www/pterodactyl/storage" >> $BUILD_DIR/Containerfile
 
-        # 5. Configure Caddy: Move to 8081, Wrap in Braces, and Fix Admin Port
-        # We must wrap the site in braces because we are adding a global options block.
-        echo "RUN sed -i 's/:8080/:8081 {/g' /etc/caddy/Caddyfile" >> $BUILD_DIR/Containerfile
-        echo "RUN echo '}' >> /etc/caddy/Caddyfile" >> $BUILD_DIR/Containerfile
+        # 5. Inject Clean Caddyfile
+        # We replace the sed hacks with a purely declarative Caddyfile.
+        # This listens on 8081 (app) and 2024 (admin) to avoid host conflicts.
+        # We use multiple echos to avoid Nix/Shell escaping issues with heredocs.
+        
+        echo "{" > $BUILD_DIR/Caddyfile
+        echo "    admin 127.0.0.1:2024" >> $BUILD_DIR/Caddyfile
+        echo "}" >> $BUILD_DIR/Caddyfile
+        echo "" >> $BUILD_DIR/Caddyfile
+        echo ":8081 {" >> $BUILD_DIR/Caddyfile
+        echo "    root * /var/www/pterodactyl/public" >> $BUILD_DIR/Caddyfile
+        echo "    file_server" >> $BUILD_DIR/Caddyfile
+        echo "    php_fastcgi 127.0.0.1:9000" >> $BUILD_DIR/Caddyfile
+        echo "" >> $BUILD_DIR/Caddyfile
+        echo "    header X-Content-Type-Options nosniff" >> $BUILD_DIR/Caddyfile
+        echo "    header X-XSS-Protection \"1; mode=block\"" >> $BUILD_DIR/Caddyfile
+        echo "    header X-Robots-Tag none" >> $BUILD_DIR/Caddyfile
+        echo "    header Content-Security-Policy \"frame-ancestors 'self'\"" >> $BUILD_DIR/Caddyfile
+        echo "    header X-Frame-Options DENY" >> $BUILD_DIR/Caddyfile
+        echo "    header Referrer-Policy same-origin" >> $BUILD_DIR/Caddyfile
+        echo "    request_body {" >> $BUILD_DIR/Caddyfile
+        echo "        max_size 100m" >> $BUILD_DIR/Caddyfile
+        echo "    }" >> $BUILD_DIR/Caddyfile
+        echo "}" >> $BUILD_DIR/Caddyfile
+
+        # Overwrite the container's default config with ours
+        echo "COPY Caddyfile /etc/caddy/Caddyfile" >> $BUILD_DIR/Containerfile
         
         # Add the global admin block at the top
         echo "RUN sed -i '1i {\\\\n  admin 127.0.0.1:2024\\\\n}' /etc/caddy/Caddyfile" >> $BUILD_DIR/Containerfile
