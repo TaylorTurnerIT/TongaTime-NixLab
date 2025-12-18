@@ -17,68 +17,61 @@ let
     #!/bin/sh
     set -e
     
-    # --- 1. Auto-Detect PHP-FPM Binary ---
-    # We search common paths for the binary
+    # 1. Auto-Detect PHP-FPM Binary
     if [ -x /usr/local/sbin/php-fpm ]; then
         PHP_FPM="/usr/local/sbin/php-fpm"
     elif [ -x /usr/sbin/php-fpm ]; then
         PHP_FPM="/usr/sbin/php-fpm"
     else
-        # Find the first executable matching php-fpm* in /usr/sbin
         PHP_FPM=$(find /usr/sbin -name "php-fpm*" -type f | head -n 1)
     fi
 
-    if [ -z "$PHP_FPM" ]; then
-        echo "FATAL: Could not find php-fpm binary. Listing /usr/sbin:"
-        ls -la /usr/sbin/
-        exit 1
-    fi
     echo "--> Detected PHP-FPM at: $PHP_FPM"
 
-    # --- 2. Initialize Environment ---
+    # 2. Environment & Secrets
     echo "--> Injecting secrets..."
     cp /tmp/.env.sops /app/.env
     
-    echo "--> Waiting for Database (pterodactyl-db:3306)..."
-    count=0
+    echo "--> Waiting for Database..."
     until nc -z pterodactyl-db 3306; do 
-      echo "Waiting for database... ($count)"
       sleep 2
-      count=$((count+1))
     done
 
     echo "--> Running Migrations..."
     php artisan migrate --seed --force
 
-    # --- 3. Smart User Creation ---
-    # We use 'tinker' to check if the specific email exists in the DB.
-    # This is safe to run on every boot and recovers from partial installs.
+    # 3. Smart User Creation
     echo "--> Checking for Admin User..."
-    USER_EXISTS=$(php artisan tinker --execute="echo \Pterodactyl\Models\User::where('email', 'admin@tongatime.us')->exists() ? 'YES' : 'NO';" | grep "YES" || true)
-
-    if [ "$USER_EXISTS" = "YES" ]; then
-        echo "--> Admin user 'admin@tongatime.us' already exists. Skipping creation."
+    USER_COUNT=$(php artisan tinker --execute="echo \Pterodactyl\Models\User::where('email', 'admin@tongatime.us')->count();")
+    
+    if echo "$USER_COUNT" | grep -q "1"; then
+        echo "--> Admin user exists. Skipping creation."
     else
         echo "--> Admin user not found. Creating..."
         ADMIN_PASS=$(cat /run/secrets/admin_password)
-        
-        # We use || true here just in case of a race condition or edge case, 
-        # so it doesn't crash the container loop.
         php artisan p:user:make \
           --email="admin@tongatime.us" \
           --username="admin" \
           --name-first="Admin" \
           --name-last="User" \
           --password="$ADMIN_PASS" \
-          --admin=1 || echo "Warning: User creation returned an error code, possibly already exists."
+          --admin=1 || echo "--> Note: Creation might have failed if user already exists."
     fi
 
-    echo "--> Setting Permissions..."
-    chown -R www-data:www-data /app/var /app/storage/logs
+    echo "--> Clearing Application Cache..."
+    php artisan optimize:clear
+    php artisan config:clear
+    php artisan view:clear
 
-    # --- 4. Start Services ---
-    echo "--> Starting PHP-FPM..."
-    $PHP_FPM --daemonize
+    echo "--> Setting Permissions (Final Fix)..."
+    # Ensure www-data owns EVERYTHING, including files created by the root commands above
+    chown -R www-data:www-data /app/var /app/storage /app/bootstrap/cache /app/public
+
+    echo "--> Starting PHP-FPM (as www-data)..."
+    $PHP_FPM --daemonize --allow-to-run-as-root \
+        -d user=www-data \
+        -d group=www-data \
+        -d listen=127.0.0.1:9000
 
     echo "--> Starting NGINX..."
     exec nginx -g "daemon off;"
@@ -88,11 +81,12 @@ let
     #!/bin/sh
     set -e
     cp /tmp/.env.sops /app/.env
+    sleep 5
     exec php artisan queue:work --sleep=3 --tries=3
   '';
 
 in {
-  # ---Secrets Management ---
+  # --- Secrets Management ---
   sops.secrets = {
     "pterodactyl/app_key" = { owner = "root"; };
     "pterodactyl/db_password" = { owner = "root"; };
@@ -105,7 +99,7 @@ in {
   sops.templates."pterodactyl-panel.env" = {
     content = ''
       APP_ENV=production
-      APP_DEBUG=false
+      APP_DEBUG=true  # Temporarily true to see 500 errors in browser if they persist
       APP_KEY=${config.sops.placeholder."pterodactyl/app_key"}
       APP_URL=https://panel.tongatime.us
       APP_TIMEZONE=UTC
@@ -154,7 +148,7 @@ in {
     owner = "root";
   };
 
-  # --- 3. Networking & Firewall ---
+  # --- Networking & Firewall ---
   networking.firewall.extraCommands = ''
     iptables -A INPUT -s ${podmanSubnet} -j ACCEPT
   '';
@@ -167,7 +161,7 @@ in {
     wantedBy = [ "multi-user.target" ];
   };
 
-  # --- 4. Container Definitions ---
+  # --- Container Definitions ---
   virtualisation.oci-containers.containers = {
 
     # --- Database ---
