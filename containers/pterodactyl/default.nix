@@ -44,8 +44,8 @@ let
         php artisan p:user:make \
           --email="admin@tongatime.us" \
           --username="admin" \
-          --name_first="Admin" \
-          --name_last="User" \
+          --name-first="Admin" \
+          --name-last="User" \
           --password="$ADMIN_PASS" \
           --admin=1
 
