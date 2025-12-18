@@ -39,7 +39,7 @@ let
 	echo "--> Running Migrations..."
 	php artisan migrate --seed --force
 
-	# 3. Check for existing admin user (without tinker hang)
+	# 3. Check for existing admin user
 	echo "--> Checking for Admin User..."
 	
 	if [ -f /app/var/admin_created ]; then
@@ -66,36 +66,20 @@ let
 	echo "--> Setting Permissions..."
 	chown -R www-data:www-data /app/var /app/storage /app/bootstrap/cache /app/public
 
-	# 4. Fix PHP-FPM Configuration
-	echo "--> Configuring PHP-FPM..."
-	sed -i 's/^user = nginx/user = www-data/' /usr/local/etc/php-fpm.conf
-	sed -i 's/^group = nginx/group = www-data/' /usr/local/etc/php-fpm.conf
-	sed -i 's/^listen.owner = nginx/listen.owner = www-data/' /usr/local/etc/php-fpm.conf
-	sed -i 's/^listen.group = nginx/listen.group = www-data/' /usr/local/etc/php-fpm.conf
-	sed -i 's/^pm = ondemand/pm = static/' /usr/local/etc/php-fpm.conf
-	sed -i 's/^pm.max_children = 9/pm.max_children = 5/' /usr/local/etc/php-fpm.conf
-	sed -i '/pm.process_idle_timeout/d' /usr/local/etc/php-fpm.conf
-	
-	cat >> /usr/local/etc/php-fpm.conf <<'FPMEND'
-	pm.start_servers = 2
-	pm.min_spare_servers = 1
-	pm.max_spare_servers = 3
-	catch_workers_output = yes
-	FPMEND
-
-	echo "--> Starting PHP-FPM..."
-	$PHP_FPM -F &
+	# 4. Start PHP-FPM using the correct www.conf pool (skip broken main config)
+	echo "--> Starting PHP-FPM with www pool config..."
+	# Use ONLY the www.conf which has correct user=www-data and static pm
+	$PHP_FPM -c /usr/local/etc/php.ini -y /usr/local/etc/php-fpm.d/www.conf -F &
 	FPM_PID=$!
 	
-	# Wait and verify workers spawned
-	sleep 2
+	# Wait for workers to spawn
+	sleep 3
 	echo "--> Verifying PHP-FPM workers..."
 	WORKERS=$(ps aux | grep -c "php-fpm: pool www" || echo "0")
 	if [ "$WORKERS" -gt 0 ]; then
-		echo "--> PHP-FPM has worker processes ready!"
+		echo "--> SUCCESS: PHP-FPM has $WORKERS worker processes!"
 	else
-		echo "--> WARNING: No PHP-FPM workers detected. Checking status..."
-		ps aux | grep php-fpm
+		echo "--> WARNING: No PHP-FPM worker processes detected yet"
 	fi
 
 	# Verify port is listening
@@ -111,7 +95,6 @@ let
 	echo "--> Starting NGINX..."
 	exec nginx -g "daemon off;"
 	'';
-
 
   workerEntrypoint = pkgs.writeText "worker-entrypoint.sh" ''
 	#!/bin/sh
