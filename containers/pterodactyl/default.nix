@@ -174,7 +174,7 @@ in {
         };
         domainname = "";
         registries = {};
-        log_driver = {
+        log_config = {
             type = "json-file";
             config = {
                 max-size = "10m";
