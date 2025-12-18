@@ -163,11 +163,12 @@ in {
         data = "/var/lib/pterodactyl/volumes";
         sftp = { bind_port = 2022; };
         enable_log_rotate = false;
+		check_permissions_on_boot = false;
       };
       
       docker = {
         network = {
-          name = "pterodactyl_nw";
+          name = "${podmanNetwork}";
           is_internal = false;
           enable_icc = true;
           network_mode = "bridge";
@@ -176,7 +177,7 @@ in {
         domainname = "";
         registries = {};
         
-        use_performant_inspect = true;
+        use_performant_inspect = false;
 
         log_config = {
             type = "json-file";
@@ -284,6 +285,8 @@ in {
         WINGS_GID = "0";
         WINGS_USERNAME = "root";
       };
+
+	  dependsOn = [ "pterodactyl-panel" ];
     };
   };
   
@@ -308,6 +311,7 @@ in {
       cp -f ${config.sops.templates."pterodactyl-wings.yml".path} /var/lib/pterodactyl-wings/config/config.yml
       # Ensure it is writable by the container (if needed) and readable
       chmod 644 /var/lib/pterodactyl-wings/config/config.yml
+	  chmod 666 /var/run/podman/podman.sock || true
     '';
   };
 }
