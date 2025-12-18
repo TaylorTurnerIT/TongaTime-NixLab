@@ -103,9 +103,17 @@
 	# --- PODMAN ---
 	virtualisation.podman = {
 		enable = true;
-		dockerCompat = true;
+		dockerCompat = false;
 		defaultNetwork.settings.dns_enabled = true;
 	};
+
+	# --- DOCKER ---
+	virtualisation.docker = {
+		enable = true;
+		# Prune images automatically to save space
+		autoPrune.enable = true;
+  };
+
 
 	# Allow rootless containers to bind to privileged ports (<1024)
 	boot.kernel.sysctl."net.ipv4.ip_unprivileged_port_start" = 0;
