@@ -194,7 +194,6 @@ in {
         "${config.sops.templates."pterodactyl-panel.env".path}:/tmp/.env.sops:ro"
         "${workerEntrypoint}:/entrypoint.sh:ro"
       ];
-      entrypoint = "/bin/sh /entrypoint.sh";
     
       # Define a simple entrypoint that runs the script
       entrypoint = "/bin/sh";
