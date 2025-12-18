@@ -106,21 +106,6 @@ let
 	exec php artisan queue:work --sleep=3 --tries=3
   '';
 
-  wingsEntrypoint = pkgs.writeText "wings-entrypoint.sh" ''
-    #!/bin/sh
-    set -e
-    
-    echo "--> Initializing Wings Config..."
-    # Copy the read-only template to the writable location
-    cp /tmp/config.yml.ro /etc/pterodactyl/config.yml
-    
-    # Ensure it is writable
-    chmod 644 /etc/pterodactyl/config.yml
-    
-    echo "--> Starting Wings..."
-    exec /usr/bin/wings --config /etc/pterodactyl/config.yml
-  '';
-
 in {
   # --- Secrets Management ---
   sops.secrets = {
