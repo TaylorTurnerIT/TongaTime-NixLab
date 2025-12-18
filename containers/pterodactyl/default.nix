@@ -64,6 +64,7 @@ let
 	php artisan view:clear || true
 
 	echo "--> Setting Permissions..."
+	chown www-data:www-data /app/.env
 	chown -R www-data:www-data /app/var /app/storage /app/bootstrap/cache /app/public
 
 	# 4. Start PHP-FPM using the correct www.conf pool (skip broken main config)
