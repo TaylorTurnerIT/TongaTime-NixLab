@@ -2,7 +2,7 @@
 
 let
   podmanNetwork = "pterodactyl_net";
-  podmanSubnet = "10.50.0.0/24";
+  podmanSubnet = "10.50.0.0/24"; 
   dataDir = "/var/lib/pterodactyl";
   
   images = {
@@ -13,21 +13,24 @@ let
   };
 
   # --- SCRIPTS ---
-  # We define the scripts here and mount them later. 
-  # We use writeText to avoid Nix-specific shebangs that break inside Alpine containers.
-
   panelEntrypoint = pkgs.writeText "panel-entrypoint.sh" ''
     #!/bin/sh
     set -e
     
+    # 1. Dynamic PHP-FPM Binary Detection
+    # Finds php-fpm82, php-fpm81, or just php-fpm
+    PHP_FPM=$(ls /usr/sbin/php-fpm* | sort -r | head -n 1)
+    echo "--> Detected PHP-FPM binary: $PHP_FPM"
+
     echo "--> Injecting secrets..."
     cp /tmp/.env.sops /app/.env
     
-    echo "--> Waiting for Database..."
-    # Alpine's nc syntax is slightly different, checking if port is open
+    echo "--> Waiting for Database (pterodactyl-db:3306)..."
+    count=0
     until nc -z pterodactyl-db 3306; do 
-      echo "Waiting for database..."
+      echo "Waiting for database... ($count)"
       sleep 2
+      count=$((count+1))
     done
 
     # Check for First Run
@@ -38,9 +41,9 @@ let
         php artisan migrate --seed --force
 
         echo "--> Creating Admin User..."
-        # Read password from secret
         ADMIN_PASS=$(cat /run/secrets/admin_password)
         
+        # FIX: Using kebab-case flags (--name-first)
         php artisan p:user:make \
           --email="admin@tongatime.us" \
           --username="admin" \
@@ -57,16 +60,18 @@ let
         php artisan migrate --force
     fi
 
-    echo "--> Starting Panel..."
-    /usr/sbin/php-fpm8.3 --daemonize
-    nginx -g "daemon off;"
+    echo "--> Starting PHP-FPM..."
+    $PHP_FPM --daemonize
+
+    echo "--> Starting NGINX..."
+    exec nginx -g "daemon off;"
   '';
 
   workerEntrypoint = pkgs.writeText "worker-entrypoint.sh" ''
     #!/bin/sh
     set -e
     cp /tmp/.env.sops /app/.env
-    php artisan queue:work --sleep=3 --tries=3
+    exec php artisan queue:work --sleep=3 --tries=3
   '';
 
 in {
@@ -132,14 +137,12 @@ in {
     owner = "root";
   };
 
-  # --- Networking ---
-  # Allow traffic from the Pterodactyl subnet (fixes DNS and DB connection issues)
+  # --- 3. Networking & Firewall ---
   networking.firewall.extraCommands = ''
     iptables -A INPUT -s ${podmanSubnet} -j ACCEPT
   '';
 
   systemd.services."create-${podmanNetwork}-network" = {
-    # Check if network exists; if not, create it with the specific subnet
     script = ''
       ${pkgs.podman}/bin/podman network exists ${podmanNetwork} || \
       ${pkgs.podman}/bin/podman network create --subnet ${podmanSubnet} ${podmanNetwork}
@@ -147,7 +150,7 @@ in {
     wantedBy = [ "multi-user.target" ];
   };
 
-  # --- Container Definitions ---
+  # --- 4. Container Definitions ---
   virtualisation.oci-containers.containers = {
 
     # --- Database ---
@@ -180,17 +183,17 @@ in {
       ports = [ "8081:80" ];
       volumes = [
         "${dataDir}/var:/app/var"
-        "${dataDir}/nginx:/etc/nginx/http.d"
+        # We want the image's default nginx config.
+        # "${dataDir}/nginx:/etc/nginx/http.d" 
+        # "${dataDir}/certs:/etc/letsencrypt"
         "${dataDir}/logs:/app/storage/logs"
-        "${dataDir}/certs:/etc/letsencrypt"
+        
         "${config.sops.templates."pterodactyl-panel.env".path}:/tmp/.env.sops:ro"
         "${config.sops.secrets."pterodactyl/admin_password".path}:/run/secrets/admin_password:ro"
         "${panelEntrypoint}:/entrypoint.sh:ro"
       ];
-      
       entrypoint = "/bin/sh";
       cmd = [ "/entrypoint.sh" ];
-      
       dependsOn = [ "pterodactyl-db" "pterodactyl-redis" ];
     };
 
@@ -204,11 +207,8 @@ in {
         "${config.sops.templates."pterodactyl-panel.env".path}:/tmp/.env.sops:ro"
         "${workerEntrypoint}:/entrypoint.sh:ro"
       ];
-    
-      # Define a simple entrypoint that runs the script
       entrypoint = "/bin/sh";
       cmd = [ "/entrypoint.sh" ];
-
       dependsOn = [ "pterodactyl-panel" ];
     };
 
@@ -235,25 +235,14 @@ in {
   };
   
   # --- Permissions ---
-  # We must create every directory that is volume-mapped on the host.
   systemd.tmpfiles.rules = [
-    # --- Database (MariaDB) ---
-    # UID 999 is commonly used by mysql/mariadb in containers
     "d ${dataDir}/mysql 0700 999 999 - -"
-
-    # --- Redis ---
-    # UID 999 is standard for Redis Alpine
     "d ${dataDir}/redis 0700 999 999 - -"
-
-    # --- Panel (Runs as www-data: 33) ---
     "d ${dataDir}/var 0755 33 33 - -"
     "d ${dataDir}/logs 0755 33 33 - -"
-    "d ${dataDir}/nginx 0755 33 33 - -"
-    "d ${dataDir}/certs 0755 33 33 - -"
-
-    # --- Wings (Runs as root) ---
+    # Removed Nginx/Certs folders from creation since we don't mount them
     "d /var/lib/pterodactyl-wings/data 0700 0 0 - -"
     "d /var/lib/pterodactyl-wings/logs 0700 0 0 - -"
-    "d /tmp/pterodactyl-wings 0700 0 0 - -" # Temp dir for Wings
+    "d /tmp/pterodactyl-wings 0700 0 0 - -"
   ];
 }
