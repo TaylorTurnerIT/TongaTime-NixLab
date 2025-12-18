@@ -176,7 +176,7 @@ in {
         domainname = "";
         registries = {};
         
-        use_performant_inspect = false;
+        use_performant_inspect = true;
 
         log_config = {
             type = "json-file";
