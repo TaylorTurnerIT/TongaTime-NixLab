@@ -120,7 +120,7 @@ in {
   sops.templates."pterodactyl-panel.env" = {
 	content = ''
 	  APP_ENV=production
-	  APP_DEBUG=true  # Temporarily true to see 500 errors in browser if they persist
+	  APP_DEBUG=false
 	  APP_KEY=${config.sops.placeholder."pterodactyl_app_key"}
 	  APP_URL=https://panel.tongatime.us
 	  APP_TIMEZONE=UTC
