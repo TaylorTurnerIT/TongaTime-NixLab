@@ -148,7 +148,7 @@ in {
 	content = builtins.toJSON {
 	  debug = false;
 	  uuid = "${config.sops.placeholder."pterodactyl_wings_uuid"}";
-	  token_id = "SET_IN_PANEL_IF_NEEDED";
+	  token_id = "${config.sops.placeholder."pterodactyl_wings_token_id"}";
 	  token = "${config.sops.placeholder."pterodactyl_wings_token"}";
 	  
 	  api = {
