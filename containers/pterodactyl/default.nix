@@ -3,6 +3,11 @@
 let
   podmanNetwork = "pterodactyl_net";
   podmanSubnet = "10.50.0.0/24"; 
+  
+  # Define a separate Docker network for Game Servers to avoid subnet conflicts
+  dockerNetwork = "pterodactyl_docker_net";
+  dockerSubnet = "172.20.0.0/16"; # Standard Docker subnet
+  
   dataDir = "/var/lib/pterodactyl";
   
   images = {
@@ -162,22 +167,21 @@ in {
       system = {
         data = "/var/lib/pterodactyl/volumes";
         sftp = { bind_port = 2022; };
-        enable_log_rotate = false;
-		check_permissions_on_boot = false;
+        enable_log_rotate = true;
+		check_permissions_on_boot = true;
       };
       
       docker = {
         network = {
-          name = "${podmanNetwork}";
+          name = dockerNetwork;
           is_internal = false;
           enable_icc = true;
           network_mode = "bridge";
-          interface = "172.18.0.1";
+          interface = "172.17.0.1";
         };
         domainname = "";
         registries = {};
-        
-        use_performant_inspect = false;
+        use_performant_inspect = true;
 
         log_config = {
             type = "json-file";
@@ -205,6 +209,16 @@ in {
 	  ${pkgs.podman}/bin/podman network create --subnet ${podmanSubnet} ${podmanNetwork}
 	'';
 	wantedBy = [ "multi-user.target" ];
+  };
+  
+  systemd.services."create-docker-game-network" = {
+    script = ''
+      ${config.virtualisation.docker.package}/bin/docker network ls | grep ${dockerNetwork} || \
+      ${config.virtualisation.docker.package}/bin/docker network create --subnet ${dockerSubnet} ${dockerNetwork}
+    '';
+    wantedBy = [ "multi-user.target" ];
+    after = [ "docker.service" ];
+    requires = [ "docker.service" ];
   };
 
   # --- Container Definitions ---
@@ -272,7 +286,7 @@ in {
       extraOptions = [ "--privileged" "--network=host" ];
       
       volumes = [
-        "/var/run/podman/podman.sock:/var/run/docker.sock"
+        "/var/run/docker.sock:/var/run/docker.sock"
         "/var/lib/pterodactyl-wings/data:/var/lib/pterodactyl"
         "/var/lib/pterodactyl-wings/logs:/var/log/pterodactyl"
         "/tmp/pterodactyl-wings:/tmp/pterodactyl"
